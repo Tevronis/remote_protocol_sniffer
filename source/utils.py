@@ -21,7 +21,7 @@ def save_log(s):
         try:
             f.write(u'{} {}\n'.format(t, s))
         except:
-            f.write(u'bad simbol\n')
+            f.write(u'bad symbol\n')
 
 
 def parse_UDP(packet, iph_length, eth_length):

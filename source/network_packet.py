@@ -58,9 +58,9 @@ class NetworkPacket:
     def print_header(self, logfile):
         self.print_light_header(logfile)
         return
-        text = 'Заголовок IP: Версия : {} Длинна IP заголовка : {} TTL : {} Протокол : {} Адресс отправения : {} Адресс доставки : {}'
-        ip_head = text.format(self.version, self.ihl, self.ttl, self.protocol_name, self.s_addr, self.d_addr)
-        Writer.log_packet(logfile, '{}\n{}'.format(ip_head, self.protocol_head))
+        # text = 'Заголовок IP: Версия : {} Длинна IP заголовка : {} TTL : {} Протокол : {} Адресс отправения : {} Адресс доставки : {}'
+        # ip_head = text.format(self.version, self.ihl, self.ttl, self.protocol_name, self.s_addr, self.d_addr)
+        # Writer.log_packet(logfile, '{}\n{}'.format(ip_head, self.protocol_head))
 
     def print_light_header(self, logfile):
         ip_head = 'Заголовок IP: Длинна IP заголовка : {} Протокол : {} Адресс отправения : {} Адресс доставки : {}'.format(
