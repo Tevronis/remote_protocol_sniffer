@@ -1,4 +1,6 @@
 # coding=utf-8
+from time import time
+
 from source.writer import Writer
 from utils import *
 
@@ -13,6 +15,7 @@ class NetworkPacket:
         self.parse(packet)
 
     def parse(self, packet):
+        self.time = time()
         # telnet 23, STD RDP 3389, Radmin 4899, Teamviewer 80 443 53, ammyy 443 1255 5931
         self.eth_length = 14
 
@@ -51,7 +54,8 @@ class NetworkPacket:
     @property
     def protocol_name(self):
         d = {17: 'UDP', 6: 'TCP'}
-        return d[self.protocol]
+        # print 'pname', self.protocol, type(self.protocol)
+        return d.get(self.protocol, '')
 
     ### PRINT FUNCTIONS ###
 

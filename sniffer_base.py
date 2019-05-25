@@ -1,4 +1,7 @@
 # coding=utf-8
+import collections
+import json
+from pprint import pprint
 from time import time
 
 from source.network_packet import NetworkPacket, IncorrectPacket
@@ -10,8 +13,8 @@ from source.writer import Writer
 class SnifferBase:
     def __init__(self):
         self.context = None
-        self.udp_streams = {}
-        self.tcp_streams = {}
+        self.udp_streams = collections.defaultdict(list)
+        self.tcp_streams = collections.defaultdict(list)
         self.analyze_previous_time = time()
 
     @property
@@ -42,9 +45,9 @@ class SnifferBase:
 
     def update_stream(self, p):
         if p.protocol_name == 'TCP':
-            self.tcp_streams.get(tuple(sorted([p.s_addr, p.d_addr])), []).append(p)
+            self.tcp_streams[tuple(sorted(['{}:{}'.format(p.s_addr, p.source_port), '{}:{}'.format(p.d_addr, p.dest_port)]))].append(p)
         if p.protocol_name == 'UDP':
-            self.udp_streams.get(tuple(sorted([p.s_addr, p.d_addr])), []).append(p)
+            self.udp_streams[tuple(sorted(['{}:{}'.format(p.s_addr, p.source_port), '{}:{}'.format(p.d_addr, p.dest_port)]))].append(p)
 
     def print_port_analyze(self, port, packets, ip):
         if packets is None:
@@ -56,15 +59,47 @@ class SnifferBase:
         self.analyze_stream()
 
     def analyze_stream(self):
+        def discretion(value, d):
+            return (int(value) + d) / d * d
+
+        def check_stream(_stream, label):
+            for tuple_hosts, stream in _stream.iteritems():
+                host1 = stream[0].s_addr
+                host2 = stream[0].d_addr
+                len_stat = {host1: collections.defaultdict(int), host2: collections.defaultdict(int)}
+                time_delay = collections.defaultdict(int)
+                previous = stream[0]
+                smb_counter = 0
+                for p in stream:
+                    if 'SMB' in p.data:
+                        smb_counter += 1
+                    if previous != p:
+                        time_delay[discretion(p.time - previous.time, 1)] += 1
+                        previous = p
+                    len_stat[p.s_addr][discretion(p.data_len, 60)] += 1
+                if smb_counter != 0:
+                    print label, tuple_hosts
+                    print 'SMB packet detected!'
+                    break
+
+                val = (sum(len_stat[host1].keys()) + sum(len_stat[host2].keys())) / (len(len_stat[host1].keys())) + len(len_stat[host2].keys())
+                print '[DEBUG] Average packet len:', str(val)
+                if val > 300:
+                    print label, tuple_hosts
+                    if len(time_delay.keys()) > 1:
+                        print 'Looks like RDP, detected time-delay between packets'
+                    else:
+                        print 'Looks like TeamViewer, time-delay not detected'
+
+                # print json.dumps(len_stat, indent=2)
+                # print json.dumps(time_delay, indent=2)
+        # print time() - self.analyze_previous_time
         if time() - self.analyze_previous_time > 10:
-            for stream in self.tcp_streams:
-                ts = TcpStream(stream)
-                # packets len
-                # ports
-                # flat
-                # in_len out_len
-            for stream in self.udp_streams:
-                us = UdpStream(stream)
+            self.analyze_previous_time = time()
+            check_stream(self.tcp_streams, 'TCP')
+            check_stream(self.udp_streams, 'UDP')
+            self.udp_streams = collections.defaultdict(list)
+            self.tcp_streams = collections.defaultdict(list)
 
     def parse_packet(self, packet):
         try:
