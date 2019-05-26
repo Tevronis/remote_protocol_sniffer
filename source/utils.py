@@ -4,6 +4,7 @@ from struct import *
 import datetime
 import pcapy
 import sys
+import string
 from io import open
 from impacket.ImpactDecoder import EthDecoder, LinuxSLLDecoder
 
@@ -22,6 +23,16 @@ def save_log(s):
             f.write(u'{} {}\n'.format(t, s))
         except:
             f.write(u'bad symbol\n')
+
+
+def clear_data(data):
+    result = ''
+    for item in data:
+        if item not in string.printable:
+            result += '.'
+        else:
+            result += item
+    return result
 
 
 def parse_UDP(packet, iph_length, eth_length):

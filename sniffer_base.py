@@ -3,7 +3,7 @@ import collections
 import json
 from pprint import pprint
 from time import time
-
+import datetime
 from source.network_packet import NetworkPacket, IncorrectPacket
 from source.rdp_apps import RDP
 from source.stream import TcpStream, UdpStream
@@ -72,28 +72,36 @@ class SnifferBase:
                 smb_counter = 0
                 for p in stream:
                     if 'SMB' in p.data:
+                        # print p.data
                         smb_counter += 1
                     if previous != p:
                         time_delay[discretion(p.time - previous.time, 1)] += 1
                         previous = p
                     len_stat[p.s_addr][discretion(p.data_len, 60)] += 1
                 if smb_counter != 0:
-                    print label, tuple_hosts
-                    print 'SMB packet detected!'
-                    break
+                    print datetime.datetime.now(), label, tuple_hosts
+                    print '\tSMB packet detected!'
+                    continue
 
-                val = (sum(len_stat[host1].keys()) + sum(len_stat[host2].keys())) / (len(len_stat[host1].keys())) + len(len_stat[host2].keys())
-                print '[DEBUG] Average packet len:', str(val)
-                if val > 300:
-                    print label, tuple_hosts
-                    if len(time_delay.keys()) > 1:
-                        print 'Looks like RDP, detected time-delay between packets'
+                val1 = 0
+                val2 = 0
+                # print host1, host2
+                if len(len_stat[host1].keys()):
+                    val1 = sum(len_stat[host1].keys()) / len(len_stat[host1].keys())
+                    # print '[DEBUG] Average packet len val1:', str(val1)
+                if len(len_stat[host2].keys()):
+                    val2 = sum(len_stat[host2].keys()) / len(len_stat[host2].keys())
+                    # print '[DEBUG] Average packet len val2:', str(val2)
+
+                if max(val1, val2) > 300:
+                    print datetime.datetime.now(), label, tuple_hosts
+                    if p.source_port in RDP.ports or p.dest_port in RDP.ports:
+                        print '\tLooks like RDP: standart RDP port 3389'
+                    elif len(time_delay.keys()) > 1 and min(val1, val2) < 700:
+                        print '\tLooks like RDP: detected time-delay between packets'
                     else:
-                        print 'Looks like TeamViewer, time-delay not detected'
+                        print '\tLooks like TeamViewer: large packets, time-delay not detected'
 
-                # print json.dumps(len_stat, indent=2)
-                # print json.dumps(time_delay, indent=2)
-        # print time() - self.analyze_previous_time
         if time() - self.analyze_previous_time > 10:
             self.analyze_previous_time = time()
             check_stream(self.tcp_streams, 'TCP')

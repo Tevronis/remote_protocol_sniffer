@@ -14,6 +14,11 @@ class RemoteApp:
     def serial_validation(self, port, packets, ip, suite):
         Writer.log_packet(suite.outfile, 'Приложение {} еще не поддерживается. Попинайте разработчика'.format(self.name))
 
+    def analyze_stream(self, stream):
+        """
+        """
+        pass
+
 
 class RDP(RemoteApp):
     name = 'RDP'
@@ -28,6 +33,9 @@ class RDP(RemoteApp):
             if len(packets) > self.packet_count_detection:
                 self.print_detection_port_sequence(ip, len(packets), port, suite.outfile)
                 suite.analyze["ip"][ip]['ports'][port] = []
+
+    def analyze_stream(self, stream):
+        pass
 
 
 class Telnet(RemoteApp):

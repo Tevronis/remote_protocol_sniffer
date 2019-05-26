@@ -44,9 +44,9 @@ class NetworkPacket:
                 if self.protocol == 17:  # UDP
                     self.decode_data, self.protocol_head, self.tcph_length, self.source_port, self.dest_port = parse_UDP(packet, self.iph_length, self.eth_length)
                 try:
-                    self.data = self.decode_data.get_data_as_string()[self.iph_length + self.eth_length + self.tcph_length + 1:]
+                    self.data = clear_data(self.decode_data.get_data_as_string()[self.iph_length + self.eth_length + self.tcph_length + 1:])
                 except:
-                    self.data = self.decode_data[self.iph_length + self.eth_length + self.tcph_length + 1:]
+                    self.data = clear_data(self.decode_data[self.iph_length + self.eth_length + self.tcph_length + 1:])
                 self.data_len = len(self.data)
         else:
             raise IncorrectPacket()
