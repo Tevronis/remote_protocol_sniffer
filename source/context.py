@@ -1,5 +1,6 @@
 # coding=utf-8
 import getopt
+import logging
 
 
 class Context:
@@ -45,7 +46,7 @@ class Context:
                 if opt[0] == '-o':
                     self.outfile = opt[1]
         except getopt.GetoptError:
-            print '''Invalid param. [pfnago:ds]
+            print '''Invalid parameters [pfnago:ds]
         p - catch all packets
         f - catch only remote desktop packets
         n - promiscuous mode
@@ -54,3 +55,9 @@ class Context:
         o - output filename
         d - print data
         s - smart header print'''
+        root = logging.getLogger()
+        del root.handlers[:]
+        if self.outfile:
+            logging.basicConfig(format='%(message)s', filename=self.outfile, level=logging.INFO)
+        else:
+            logging.basicConfig(format='%(message)s', level=logging.INFO)

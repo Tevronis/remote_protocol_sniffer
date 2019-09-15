@@ -1,8 +1,10 @@
 # coding=utf-8
+import logging
 from time import time
 
-from source.writer import Writer
 from utils import *
+
+LOGGER = logging.getLogger(__name__)
 
 
 class IncorrectPacket(Exception):
@@ -59,65 +61,62 @@ class NetworkPacket:
 
     ### PRINT FUNCTIONS ###
 
-    def print_header(self, logfile):
-        self.print_light_header(logfile)
-        return
+    def get_header(self):
+        return self.get_light_header()
         # text = 'Заголовок IP: Версия : {} Длинна IP заголовка : {} TTL : {} Протокол : {} Адресс отправения : {} Адресс доставки : {}'
         # ip_head = text.format(self.version, self.ihl, self.ttl, self.protocol_name, self.s_addr, self.d_addr)
         # Writer.log_packet(logfile, '{}\n{}'.format(ip_head, self.protocol_head))
 
-    def print_light_header(self, logfile):
+    def get_light_header(self):
         ip_head = 'Заголовок IP: Длинна IP заголовка : {} Протокол : {} Адресс отправения : {} Адресс доставки : {}'.format(
             self.ihl, self.protocol_name, self.s_addr, self.d_addr)
         protocol_head = 'Заголовок {}: Исходный порт : {} Порт назначения : {} Длина {} заголовка : {} Размер данных : {}\n'.format(
             self.protocol_name, self.source_port, self.dest_port, self.protocol_name, self.tcph_length, self.data_len)
 
-        Writer.log_packet(logfile, '{}\n{}'.format(ip_head, protocol_head))
+        return '{}\n{}'.format(ip_head, protocol_head)
 
-    def print_full_header(self, logfile):
+    def print_full_header(self):
         pass
 
-    def print_data(self, logfile):
+    def print_data(self):
         try:
-            Writer.log_packet(logfile, 'Данные пакета: ', self.data, '\n')
+            LOGGER.info('Данные пакета: ', self.data, '\n')
             # save_log(packet.data[packet.iph_length + packet.eth_length + packet.tcph_length + 1:])
         except Exception as e:
-            Writer.log_packet(logfile, 'Данные пакета: непечатаемый символ. TODO написать hex формат!', '\n')
+            LOGGER.info('Данные пакета: непечатаемый символ. TODO написать hex формат!\n')
             print e.message
         print
 
     ### DETECT FUNCTIONS ###
 
-    def keyword_detection(self, keywords, logfile):
+    def keyword_detection(self, keywords):
         result = False
         for keyword in keywords:
             for elem in keyword:
                 if elem not in self.data:
                     break
             else:
-                Writer.log_packet(logfile, 'Замечено подключение с ключевой фразой: {} с адресса {}'.format(
-                    ' '.join(keyword), self.s_addr)
+                LOGGER.info(
+                    'Замечено подключение с ключевой фразой: {} с адресса {}'
+                        .format(' '.join(keyword), self.s_addr)
                 )
+
                 result = True
         return result
 
     def port_detection(self, keyports, logfile):
         result = False
         if self.dest_port in keyports:
-            Writer.log_packet(logfile, 'Замечено подключение на порт {} с адресса {}'.format(
-                self.dest_port, self.s_addr)
-            )
+            LOGGER.info('Замечено подключение на порт {} с адресса {}'.format(self.dest_port, self.s_addr))
             result = True
         if self.source_port in keyports:
-            Writer.log_packet(logfile, 'Замечено подключение на порт {} с адресса {}'.format(
-                self.source_port, self.d_addr)
-            )
+            LOGGER.info('Замечено подключение на порт {} с адресса {}'.format(self.source_port, self.d_addr))
             result = True
         return result
 
-    def telnet_detection(self, logfile):
+    def telnet_detection(self):
         if len(self.data) == 1:
-            Writer.log_packet(logfile, 'Размер данных равен 1')
+            LOGGER.info('Размер данных равен 1')
             return True
         return False
 

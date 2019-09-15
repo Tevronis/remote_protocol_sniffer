@@ -1,12 +1,12 @@
 # coding=utf-8
 
 import pcapy
+import logging
 
 from sniffer_base import SnifferBase
 from source.context import Context
 from source.network_packet import NetworkPacket, IncorrectPacket
 from source.utils import *
-from source.writer import *
 
 
 class Sniffer(SnifferBase):

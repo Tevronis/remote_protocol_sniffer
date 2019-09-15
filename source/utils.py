@@ -15,16 +15,6 @@ def eth_addr(a):
     return b
 
 
-def save_log(s):
-    with open('log.log', 'a', encoding='utf-8') as f:
-        t = str(datetime.datetime.now().time()) + ' '
-        t.encode('utf-8')
-        try:
-            f.write(u'{} {}\n'.format(t, s))
-        except:
-            f.write(u'bad symbol\n')
-
-
 def clear_data(data):
     result = ''
     for item in data:

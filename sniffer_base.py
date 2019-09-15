@@ -1,13 +1,16 @@
 # coding=utf-8
 import collections
-import json
-from pprint import pprint
-from time import time
 import datetime
+import logging
+from time import time
+
 from source.network_packet import NetworkPacket, IncorrectPacket
-from source.rdp_apps import RDP
-from source.stream import TcpStream, UdpStream
-from source.writer import Writer
+from source.rdp_apps import RDP, Radmin, Teamviewer
+from source.report import Report
+
+LOGGER = logging.getLogger(__name__)
+
+STREAM_DELAY = 10
 
 
 class SnifferBase:
@@ -22,32 +25,38 @@ class SnifferBase:
         return self.context.outfile
 
     def raw_mode(self, packet):
-        packet.print_header(self.outfile)
+        header = packet.get_header()
+        LOGGER.info(header)
         if self.context.DATA_PRINT:
-            packet.print_data(self.outfile)
-        Writer.print_spliter(self.outfile)
+            packet.print_data()
+        LOGGER.info('\n* * * * * * * * * * * * * * * * *')
 
     def filter_mode(self, packet):
         result = False
 
-        result |= packet.keyword_detection(self.context.key_values, logfile=self.outfile)
+        result |= packet.keyword_detection(self.context.key_values)
 
-        result |= packet.port_detection(self.context.key_ports, logfile=self.outfile)
+        result |= packet.port_detection(self.context.key_ports)
 
-        result |= packet.telnet_detection(logfile=self.outfile)
+        result |= packet.telnet_detection()
 
         if not result:
             return
 
-        packet.print_header(self.outfile)
+        header = packet.get_header()
+        LOGGER.info(header)
+
         if self.context.DATA_PRINT:
-            packet.print_data(self.outfile)
+            packet.print_data()
 
     def update_stream(self, p):
-        if p.protocol_name == 'TCP':
-            self.tcp_streams[tuple(sorted(['{}:{}'.format(p.s_addr, p.source_port), '{}:{}'.format(p.d_addr, p.dest_port)]))].append(p)
-        if p.protocol_name == 'UDP':
-            self.udp_streams[tuple(sorted(['{}:{}'.format(p.s_addr, p.source_port), '{}:{}'.format(p.d_addr, p.dest_port)]))].append(p)
+        if p.protocol_name in ('TCP', 'UDP'):
+            src = '{}:{}'.format(p.s_addr, p.source_port)
+            dst = '{}:{}'.format(p.d_addr, p.dest_port)
+            if p.protocol_name == 'TCP':
+                self.tcp_streams[tuple(sorted([src, dst]))].append(p)
+            if p.protocol_name == 'UDP':
+                self.udp_streams[tuple(sorted([src, dst]))].append(p)
 
     def print_port_analyze(self, port, packets, ip):
         if packets is None:
@@ -62,52 +71,80 @@ class SnifferBase:
         def discretion(value, d):
             return (int(value) + d) / d * d
 
-        def check_stream(_stream, label):
-            for tuple_hosts, stream in _stream.iteritems():
+        def parse_stream(stream, label):
+            def get_statistic(stream):
+                result = {
+                    'smb': False,
+                    # Average packet size for two substreams between two hosts
+                    'average_packet_lengths': (0, 0),
+                    'src_port': None,
+                    'dst_port': None,
+                    'delay_between_packets': None,
+                }
                 host1 = stream[0].s_addr
                 host2 = stream[0].d_addr
-                len_stat = {host1: collections.defaultdict(int), host2: collections.defaultdict(int)}
-                time_delay = collections.defaultdict(int)
-                previous = stream[0]
+                result['src_port'] = stream[0].source_port
+                result['dst_port'] = stream[0].dest_port
+                packet_length_stat = {
+                    host1: collections.defaultdict(int),
+                    host2: collections.defaultdict(int)
+                }
+                delay_between_packets = collections.defaultdict(int)
                 smb_counter = 0
-                for p in stream:
-                    if 'SMB' in p.data:
-                        # print p.data
+                for idx in xrange(1, len(stream)):
+                    packet = stream[idx]
+                    previous_packet = stream[idx - 1]
+                    if 'SMB' in packet.data:
                         smb_counter += 1
-                    if previous != p:
-                        time_delay[discretion(p.time - previous.time, 1)] += 1
-                        previous = p
-                    len_stat[p.s_addr][discretion(p.data_len, 60)] += 1
+
+                    delay_between_packets[discretion(packet.time - previous_packet.time, 1)] += 1
+                    packet_length_stat[packet.s_addr][discretion(packet.data_len, 60)] += 1
+
+                result['delay_between_packets'] = delay_between_packets
                 if smb_counter != 0:
-                    print datetime.datetime.now(), label, tuple_hosts
-                    print '\tSMB packet detected!'
-                    continue
+                    result['smb'] = True
+                    return result
 
                 val1 = 0
                 val2 = 0
-                # print host1, host2
-                if len(len_stat[host1].keys()):
-                    val1 = sum(len_stat[host1].keys()) / len(len_stat[host1].keys())
-                    # print '[DEBUG] Average packet len val1:', str(val1)
-                if len(len_stat[host2].keys()):
-                    val2 = sum(len_stat[host2].keys()) / len(len_stat[host2].keys())
-                    # print '[DEBUG] Average packet len val2:', str(val2)
 
-                if max(val1, val2) > 300:
-                    print datetime.datetime.now(), label, tuple_hosts
-                    if p.source_port in RDP.ports or p.dest_port in RDP.ports:
-                        print '\tLooks like RDP: standart RDP port 3389'
-                    elif len(time_delay.keys()) > 1 and min(val1, val2) < 700:
-                        print '\tLooks like RDP: detected time-delay between packets'
-                    else:
-                        print '\tLooks like TeamViewer: large packets, time-delay not detected'
+                if len(packet_length_stat[host1].keys()):
+                    val1 = sum(packet_length_stat[host1].keys()) / len(packet_length_stat[host1].keys())
+                if len(packet_length_stat[host2].keys()):
+                    val2 = sum(packet_length_stat[host2].keys()) / len(packet_length_stat[host2].keys())
+                result['average_packet_lengths'] = (val1, val2)
+                return result
 
-        if time() - self.analyze_previous_time > 10:
-            self.analyze_previous_time = time()
-            check_stream(self.tcp_streams, 'TCP')
-            check_stream(self.udp_streams, 'UDP')
+            report = Report()
+            for tuple_hosts, stream in stream.iteritems():
+                # get data from stream
+                s = get_statistic(stream)
+                report.append('----------')
+                report.append('Time: {}; Protocol: {}; \nHosts: {}'.format(datetime.datetime.now(), label, tuple_hosts))
+
+                # here we analyze stream data that is contain in statistic
+                if s['smb']:
+                    report.append('Result:')
+                    report.append('\tSMB packet detected!')
+                elif max(s['average_packet_lengths']) > 300:
+                    report.append('Result:')
+                    for remote_app in (RDP, Radmin, Teamviewer):
+                        app = remote_app()
+                        result = app.analyze_stream_stat(s)
+                        if result:
+                            report.append(result)
+                            break
+
+                report.print_report()
+
+        if time() - self.analyze_previous_time > STREAM_DELAY:
+            parse_stream(self.tcp_streams, 'TCP')
+            parse_stream(self.udp_streams, 'UDP')
+
+            # drop containers
             self.udp_streams = collections.defaultdict(list)
             self.tcp_streams = collections.defaultdict(list)
+            self.analyze_previous_time = time()
 
     def parse_packet(self, packet):
         try:
