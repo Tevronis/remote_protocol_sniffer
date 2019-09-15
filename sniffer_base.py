@@ -133,7 +133,7 @@ class SnifferBase:
                         result = app.analyze_stream_stat(s)
                         if result:
                             report.append(result)
-                            break
+                            # break
 
                 report.print_report()
 

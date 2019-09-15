@@ -1,12 +1,9 @@
 # coding=utf-8
 import socket
-from struct import *
-import datetime
-import pcapy
-import sys
 import string
-from io import open
-from impacket.ImpactDecoder import EthDecoder, LinuxSLLDecoder
+from struct import *
+
+from impacket.ImpactDecoder import EthDecoder
 
 
 # Convert a string of 6 characters of ethernet address into a dash separated hex string
@@ -15,8 +12,9 @@ def eth_addr(a):
     return b
 
 
-def clear_data(data):
+def pretty_data(data):
     result = ''
+    # import pdb; pdb.set_trace()
     for item in data:
         if item not in string.printable:
             result += '.'
@@ -25,7 +23,7 @@ def clear_data(data):
     return result
 
 
-def parse_UDP(packet, iph_length, eth_length):
+def parse_udp(packet, iph_length, eth_length):
     u = iph_length + eth_length
     udph_length = 8
     udp_header = packet[u:u + 8]
@@ -37,16 +35,22 @@ def parse_UDP(packet, iph_length, eth_length):
     length = udph[2]
     checksum = udph[3]
 
-    UDP_str = 'Заголовок UDP Исходный порт {} Порт назначения : {} Длинна : {} Checksum : {}\n'.format(source_port, dest_port, length, checksum)
+    udp_str = 'Заголовок UDP Исходный порт {} Порт назначения : {} Длинна : {} Checksum : {}\n'.format(source_port, dest_port, length, checksum)
 
     h_size = eth_length + iph_length + udph_length
     data_size = len(packet) - h_size
 
     decode_data = packet[h_size:]
-    return decode_data, UDP_str, udph_length, source_port, dest_port
+    return dict(
+        decode_data=decode_data,
+        protocol_msg=udp_str,
+        h_length=udph_length,
+        source_port=source_port,
+        dest_port=dest_port
+    )
 
 
-def parce_ICMP(packet, iph_length, eth_length):
+def parce_icmp(packet, iph_length, eth_length):
     u = iph_length + eth_length
     icmph_length = 4
     icmp_header = packet[u:u + 4]
@@ -57,16 +61,20 @@ def parce_ICMP(packet, iph_length, eth_length):
     code = icmph[1]
     checksum = icmph[2]
 
-    ICMP_str = 'Заголовок ICMP Тип : {} Код : {} Checksum : {}\n'.format(icmp_type, code, checksum)
+    icmp_str = 'Заголовок ICMP Тип : {} Код : {} Checksum : {}\n'.format(icmp_type, code, checksum)
 
     h_size = eth_length + iph_length + icmph_length
     data_size = len(packet) - h_size
 
-    data = packet[h_size:]
-    return data, ICMP_str
+    decode_data = packet[h_size:]
+    return dict(
+        decode_data=decode_data,
+        h_length=icmph_length,
+        protocol_msg=icmp_str
+    )
 
 
-def parse_TCP(packet, iph_length, eth_length):
+def parse_tcp(packet, iph_length, eth_length):
     t = iph_length + eth_length
     tcp_header = packet[t:t + 20]
 
@@ -78,17 +86,23 @@ def parse_TCP(packet, iph_length, eth_length):
     acknowledgement = tcph[3]
     doff_reserved = tcph[4]
     tcph_length = doff_reserved >> 4
-    TCP_str = 'Заголовок TCP: Исходный порт : {} Порт назначения : {} Порядковый номер : {} Подтверждение : {} Длина TCP заголовка : {}\n'.format(
+    tcp_str = 'Заголовок TCP: Исходный порт : {} Порт назначения : {} Порядковый номер : {} Подтверждение : {} Длина TCP заголовка : {}\n'.format(
         source_port, dest_port, sequence, acknowledgement, tcph_length)
 
     h_size = eth_length + iph_length + tcph_length * 4
 
     decode_data = EthDecoder().decode(packet)  # .get_data_as_string()
 
-    return decode_data, source_port, dest_port, tcph_length, TCP_str
+    return dict(
+        decode_data=decode_data,
+        source_port=source_port,
+        dest_port=dest_port,
+        h_length=tcph_length,
+        protocol_msg=tcp_str
+    )
 
 
-def parse_IP(packet, eth_length):
+def parse_ip(packet, eth_length):
     ip_header = packet[eth_length:20 + eth_length]
 
     iph = unpack('!BBHHHBBH4s4s', ip_header)
@@ -103,4 +117,13 @@ def parse_IP(packet, eth_length):
     protocol = iph[6]
     s_addr = socket.inet_ntoa(iph[8])
     d_addr = socket.inet_ntoa(iph[9])
-    return iph_length, version, ihl, ttl, protocol, s_addr, d_addr
+
+    return {
+        'iph_length': iph_length,
+        'version': version,
+        'ihl': ihl,
+        'ttl': ttl,
+        'l4_protocol': protocol,
+        's_addr': s_addr,
+        'd_addr': d_addr
+    }
