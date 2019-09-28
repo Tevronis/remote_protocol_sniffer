@@ -10,7 +10,7 @@ class RemoteApp:
     def __init__(self):
         pass
 
-    def print_detection_port_sequence(self, ip, count, port, logfile):
+    def print_detection_port_sequence(self, ip, count, port):
         LOGGER.info(
             '\nС адреса {} замечена {} сессия. '
             'Перехвачено {} пакетов адресованных на порт {}'
@@ -18,8 +18,7 @@ class RemoteApp:
         )
 
     def serial_validation(self, port, packets, ip, suite):
-        LOGGER.info('Приложение {} еще не поддерживается. '
-                    'Попинайте разработчика'.format(self.name))
+        LOGGER.info('Приложение {} еще не поддерживается.'.format(self.name))
 
     def analyze_stream_stat(self, stream):
         """
@@ -38,22 +37,22 @@ class RDP(RemoteApp):
     def serial_validation(self, port, packets, ip, suite):
         if port in self.ports:
             if len(packets) > self.packet_count_detection:
-                self.print_detection_port_sequence(ip, len(packets), port, suite.outfile)
+                self.print_detection_port_sequence(ip, len(packets), port)
                 suite.analyze["ip"][ip]['ports'][port] = []
 
     def analyze_stream_stat(self, statistic):
         result = ''
         for port in (statistic['src_port'], statistic['dst_port']):
             if port in self.ports:
-                result += '\n\tStandard RDP port {port}'.format(port=port)
+                result += '\n\tСтандартный RDP порт {port}'.format(port=port)
 
         dbp = len(statistic['delay_between_packets'].keys())
         apl = min(statistic['average_packet_lengths'])
         if dbp > 1 and apl < 700:
-            result += '\n\tDetected time-delay between packets'
+            result += '\n\tОбнаружена задержка между пакетами'
 
         if result:
-            result = 'RDP features: ' + result
+            result = 'RDP особенности: ' + result
         return result
 
 
@@ -72,7 +71,7 @@ class Radmin(RemoteApp):
     def serial_validation(self, port, packets, ip, suite):
         if port in self.ports:
             if len(packets) > self.packet_count_detection:
-                self.print_detection_port_sequence(ip, len(packets), port, suite.outfile)
+                self.print_detection_port_sequence(ip, len(packets), port)
                 suite.analyze["ip"][ip]['ports'][port] = []
 
     def analyze_stream_stat(self, statistic):
@@ -84,10 +83,10 @@ class Radmin(RemoteApp):
         dbp = len(statistic['delay_between_packets'].keys())
         apl = min(statistic['average_packet_lengths'])
         if dbp > 1 and apl < 700:
-            result += '\n\tDetected time-delay between packets'
+            result += '\n\tОбнаружена задержка между пакетами'
 
         if result:
-            result = 'Radmin features: ' + result
+            result = 'Radmin особенности: ' + result
         return result
 
 
@@ -99,7 +98,7 @@ class Teamviewer(RemoteApp):
         dbp = len(statistic['delay_between_packets'].keys())
         apl = min(statistic['average_packet_lengths'])
         if not (dbp > 1 and apl < 700):
-            result = 'TeamViewer features: \n\tlarge packets, time-delay not detected'
+            result = 'TeamViewer особенности: \n\tбольшие пакеты, задерка между пакетами не обнаружена'
         return result
 
 

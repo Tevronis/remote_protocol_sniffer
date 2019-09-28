@@ -120,14 +120,14 @@ class SnifferBase:
                 # get data from stream
                 s = get_statistic(stream)
                 report.append('----------')
-                report.append('Time: {}; Protocol: {}; \nHosts: {}'.format(datetime.datetime.now(), label, tuple_hosts))
+                report.append('Время: {}; Протокол: {}; \nХосты: {}'.format(datetime.datetime.now(), label, tuple_hosts))
 
                 # here we analyze stream data that is contain in statistic
                 if s['smb']:
-                    report.append('Result:')
-                    report.append('\tSMB packet detected!')
+                    report.append('Результат:')
+                    report.append('\tобнаружен SMB пакет!')
                 elif max(s['average_packet_lengths']) > 300:
-                    report.append('Result:')
+                    report.append('Результат:')
                     for remote_app in (RDP, Radmin, Teamviewer):
                         app = remote_app()
                         result = app.analyze_stream_stat(s)

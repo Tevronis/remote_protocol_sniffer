@@ -47,14 +47,14 @@ class Context:
                     self.outfile = opt[1]
         except getopt.GetoptError:
             print '''Invalid parameters [pfnago:ds]
-        p - catch all packets
-        f - catch only remote desktop packets
-        n - promiscuous mode
-        a - analise mode
+        p - перехват всех пакетов
+        f - перехват пакетов только удаленного доступа 
+        n - неразборчивый режим
+        a - режим анализа
         g - print data i analise mode
-        o - output filename
-        d - print data
-        s - smart header print'''
+        o - сохранять в файл
+        d - печать данные пакета
+        s - печать сокращенную информацию о пакете'''
         root = logging.getLogger()
         del root.handlers[:]
         if self.outfile:
