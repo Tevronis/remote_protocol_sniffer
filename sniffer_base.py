@@ -27,9 +27,13 @@ class SnifferBase:
     def raw_mode(self, packet):
         header = packet.get_header()
         LOGGER.info(header)
+        if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+            print str(header)
         if self.context.DATA_PRINT:
             packet.print_data()
         LOGGER.info('\n* * * * * * * * * * * * * * * * *')
+        if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+            print str('\n* * * * * * * * * * * * * * * * *')
 
     def filter_mode(self, packet):
         result = False
@@ -45,6 +49,8 @@ class SnifferBase:
 
         header = packet.get_header()
         LOGGER.info(header)
+        if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+            print str(header)
 
         if self.context.DATA_PRINT:
             packet.print_data()
@@ -80,6 +86,8 @@ class SnifferBase:
                     'src_port': None,
                     'dst_port': None,
                     'delay_between_packets': None,
+                    'server': None,
+                    'client': None
                 }
                 host1 = stream[0].s_addr
                 host2 = stream[0].d_addr
@@ -103,7 +111,7 @@ class SnifferBase:
                 result['delay_between_packets'] = delay_between_packets
                 if smb_counter != 0:
                     result['smb'] = True
-                    return result
+                    # return result
 
                 val1 = 0
                 val2 = 0
@@ -112,6 +120,10 @@ class SnifferBase:
                     val1 = sum(packet_length_stat[host1].keys()) / len(packet_length_stat[host1].keys())
                 if len(packet_length_stat[host2].keys()):
                     val2 = sum(packet_length_stat[host2].keys()) / len(packet_length_stat[host2].keys())
+                result['server'] = host1
+                result['client'] = host2
+                if val1 < val2:
+                    result['server'], result['client'] = host2, host1
                 result['average_packet_lengths'] = (val1, val2)
                 return result
 
@@ -121,6 +133,8 @@ class SnifferBase:
                 s = get_statistic(stream)
                 report.append('----------')
                 report.append('Время: {}; Протокол: {}; \nХосты: {}'.format(datetime.datetime.now(), label, tuple_hosts))
+                report.append('Инициатор подключения: {}'.format(s['client']))
+                report.append('Управляемая машина: {}'.format(s['server']))
 
                 # here we analyze stream data that is contain in statistic
                 if s['smb']:
@@ -134,6 +148,8 @@ class SnifferBase:
                         if result:
                             report.append(result)
                             # break
+                else:
+                    break
 
                 report.print_report()
 

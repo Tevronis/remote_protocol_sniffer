@@ -2,6 +2,7 @@
 import logging
 from time import time
 
+from source.report import Report
 from utils import *
 
 LOGGER = logging.getLogger(__name__)
@@ -33,7 +34,6 @@ class NetworkPacket:
 
         self.eth = unpack('!6s6sH', self.eth_header)
         # print 'UNPACKING RAW ETH_HEADER: ' + str(eth)   # unpacking
-        # import pdb; pdb.set_trace()
         self.eth_protocol = socket.ntohs(self.eth[2])
         # print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
         # packet[6:12]) + ' Protocol : ' + str(eth_protocol)
@@ -113,12 +113,16 @@ class NetworkPacket:
 
     def print_data(self):
         try:
-            # import pdb; pdb.set_trace()
             msg = 'Данные пакета: %s\n' % self.data
             LOGGER.info(msg)
+            if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+                print str(msg)
             # save_log(packet.data[packet.iph_length + packet.eth_length + packet.tcph_length + 1:])
         except Exception as e:
-            LOGGER.info('Данные пакета: непечатаемый символ. TODO написать hex формат!\n')
+            msg = 'Данные пакета: непечатаемый символ.\n'
+            LOGGER.info(msg)
+            if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+                print str(msg)
             print e.message
         print
 
@@ -131,27 +135,36 @@ class NetworkPacket:
                 if elem not in self.data:
                     break
             else:
-                LOGGER.info(
-                    'Замечено подключение с ключевой фразой: {} с адресса {}'
-                        .format(' '.join(keyword), self.s_addr)
-                )
-
+                msg = 'Замечено подключение с ключевой фразой: {} с ' \
+                      'адресса {}'.format(' '.join(keyword), self.s_addr)
+                LOGGER.info(msg)
+                if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+                    print str(msg)
                 result = True
         return result
 
     def port_detection(self, keyports):
         result = False
         if self.dest_port in keyports:
-            LOGGER.info('Замечено подключение на порт {} с адресса {}'.format(self.dest_port, self.s_addr))
+            msg = 'Замечено подключение на порт {} с адресса {}'.format(self.dest_port, self.s_addr)
+            LOGGER.info(msg)
+            if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+                print str(msg)
             result = True
         if self.source_port in keyports:
-            LOGGER.info('Замечено подключение на порт {} с адресса {}'.format(self.source_port, self.d_addr))
+            msg = 'Замечено подключение на порт {} с адресса {}'.format(self.source_port, self.d_addr)
+            LOGGER.info(msg)
+            if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+                print str(msg)
             result = True
         return result
 
     def telnet_detection(self):
         if len(self.data) == 1:
-            LOGGER.info('Размер данных равен 1')
+            msg = 'Размер данных равен 1'
+            LOGGER.info(msg)
+            if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+                print str(msg)
             return True
         return False
 

@@ -14,7 +14,6 @@ def eth_addr(a):
 
 def pretty_data(data):
     result = ''
-    # import pdb; pdb.set_trace()
     for item in data:
         if item not in string.printable:
             result += '.'

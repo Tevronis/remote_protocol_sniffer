@@ -1,6 +1,7 @@
 # coding=utf-8
 
 import pcapy
+import sys
 
 from sniffer_base import SnifferBase
 from source.context import Context

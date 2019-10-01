@@ -11,14 +11,18 @@ class RemoteApp:
         pass
 
     def print_detection_port_sequence(self, ip, count, port):
-        LOGGER.info(
-            '\nС адреса {} замечена {} сессия. '
-            'Перехвачено {} пакетов адресованных на порт {}'
-                .format(ip, self.name, count, port)
-        )
+        msg = '\nС адреса {} замечена {} сессия. ' \
+              'Перехвачено {} пакетов адресованных на ' \
+              'порт {}'.format(ip, self.name, count, port)
+        LOGGER.info(msg)
+        if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+            print str(msg)
 
     def serial_validation(self, port, packets, ip, suite):
-        LOGGER.info('Приложение {} еще не поддерживается.'.format(self.name))
+        msg = 'Приложение {} еще не поддерживается.'.format(self.name)
+        LOGGER.info(msg)
+        if LOGGER.root.handlers[0].__class__.__name__ == 'FileHandler':
+            print str(msg)
 
     def analyze_stream_stat(self, stream):
         """
