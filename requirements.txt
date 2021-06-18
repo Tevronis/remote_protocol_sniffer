@@ -1,4 +1,4 @@
 # need install libpcap0.8-dev or later
 # sudo apt install ...
 pcapy==0.11.4
-impacket==0.9.15
+impacket==0.9.23
